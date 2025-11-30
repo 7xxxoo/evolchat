@@ -5187,247 +5187,65 @@
             `;
         }
 
-// 初始化电池图标设置
-function initBatteryIcon() {
+// 初始化电池状态
+function initBattery() {
     if (!appData.settings.beautify.batteryIcon) {
         appData.settings.beautify.batteryIcon = {
             numberPosition: 'inside',
             numberColor: '#ffffff',
             customIconUrl: '',
-            batteryLevel: 100
+            showPercentage: true
         };
     }
-    applyBatteryIconSettings();
+    updateBatteryLevel();
+    setInterval(updateBatteryLevel, 60000); // 每分钟更新一次电量
 }
 
-// 应用电池图标设置
-function applyBatteryIconSettings() {
+// 更新电量显示
+function updateBatteryLevel() {
     const batteryIcon = document.querySelector('.battery-icon');
-    const batteryPercent = document.querySelector('.battery-percent');
     const batteryFill = document.querySelector('.battery-fill');
-    const b = appData.settings.beautify.batteryIcon;
+    const batteryPercent = document.querySelector('.battery-percent');
     
-    if (!batteryIcon) return;
+    if (!batteryIcon || !batteryFill || !batteryPercent) return;
+
+    // 模拟真实电量（实际应用中应从设备获取）
+    const batteryLevel = Math.min(100, Math.max(0, getDeviceBatteryLevel()));
+    const settings = appData.settings.beautify.batteryIcon || {};
+
+    // 更新电量填充
+    batteryFill.style.width = `${batteryLevel}%`;
     
-    // 移除所有位置类
-    batteryIcon.classList.remove('number-inside', 'number-outside', 'number-none');
-    
-    // 应用位置设置
-    batteryIcon.classList.add(`number-${b.numberPosition}`);
-    
-    // 应用数字颜色
-    batteryPercent.style.color = b.numberColor;
-    
-    // 应用自定义图标
-    if (b.customIconUrl) {
-        batteryIcon.style.backgroundImage = `url(${b.customIconUrl})`;
-        batteryFill.style.display = 'none'; // 隐藏默认电量条
+    // 更新电量百分比文本
+    if (settings.showPercentage !== false) {
+        batteryPercent.textContent = settings.numberPosition === 'inside' ? 
+            Math.round(batteryLevel) : `${Math.round(batteryLevel)}%`;
+    }
+
+    // 低电量状态
+    if (batteryLevel <= 20) {
+        batteryIcon.classList.add('low-battery');
     } else {
-        batteryIcon.style.backgroundImage = 'none';
-        batteryFill.style.display = 'block'; // 显示默认电量条
+        batteryIcon.classList.remove('low-battery');
     }
-    
-    // 更新电量显示
-    updateBatteryDisplay(b.batteryLevel);
-}
 
-// 更新电池电量显示
-function updateBatteryDisplay(level) {
-    const batteryPercent = document.querySelector('.battery-percent');
-    const batteryFill = document.querySelector('.battery-fill');
-    const b = appData.settings.beautify.batteryIcon;
-    
-    b.batteryLevel = level;
-    
-    if (batteryPercent) {
-        batteryPercent.textContent = level;
-    }
-    
-    if (batteryFill) {
-        batteryFill.style.width = `${level}%`;
+    // 充电状态（模拟）
+    if (isDeviceCharging()) {
+        batteryIcon.classList.add('charging');
+    } else {
+        batteryIcon.classList.remove('charging');
     }
 }
 
-// 渲染电池图标设置页面
-function renderBatteryIconSettingsPage(container) {
-    const b = appData.settings.beautify.batteryIcon;
-    
-    container.innerHTML = `
-        <div class="wechat-header">
-            <div class="header-left header-back-btn" onclick="goBack()">
-                <i class="fas fa-chevron-left"></i>
-                <span>返回</span>
-            </div>
-            <span class="header-title">更换电池图标</span>
-        </div>
-        <div class="content-area form-page">
-            <div class="form-group">
-                <label>调整图标数字位置</label>
-                <select id="battery-number-position">
-                    <option value="inside" ${b.numberPosition === 'inside' ? 'selected' : ''}>电池图标内</option>
-                    <option value="outside" ${b.numberPosition === 'outside' ? 'selected' : ''}>电池图标外</option>
-                    <option value="none" ${b.numberPosition === 'none' ? 'selected' : ''}>不显示数字</option>
-                </select>
-                <div class="form-hint">
-                    <ul>
-                        <li><strong>电池图标内</strong>：数字显示在电池图标内部</li>
-                        <li><strong>电池图标外</strong>：数字显示在电池图标右侧</li>
-                        <li><strong>不显示数字</strong>：隐藏所有数字显示</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>电池图标数字颜色</label>
-                <input type="color" id="battery-number-color-input" value="${b.numberColor}">
-            </div>
-            
-            <div class="form-group">
-                <label>预览当前电池图标</label>
-                <div class="battery-preview">
-                    <div class="preview-battery-icon">
-                        <div class="battery-fill-preview"></div>
-                        <span class="battery-percent-preview">85</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>更换电池图标 (URL链接)</label>
-                <input type="text" id="battery-icon-url-input" placeholder="输入图片URL链接..." value="${b.customIconUrl || ''}">
-                <div class="form-hint">支持 PNG、JPG、SVG 格式图片链接</div>
-            </div>
-            
-            <div class="form-group">
-                <label>更换电池图标 (本地文件)</label>
-                <div class="file-upload-group">
-                    <button class="form-btn file-upload-btn" onclick="document.getElementById('battery-icon-file-input').click()">
-                        <i class="fas fa-upload"></i> 选择图片文件
-                    </button>
-                    <input type="file" id="battery-icon-file-input" class="file-input" accept="image/*" style="display: none;">
-                    <span id="battery-file-name" class="file-name"></span>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>重置设置</label>
-                <button class="form-btn reset-btn" onclick="resetBatteryIconSettings()">
-                    <i class="fas fa-undo"></i> 恢复默认设置
-                </button>
-            </div>
-            
-            <div class="form-actions">
-                <button class="form-btn primary" id="save-battery-icon-btn">应用设置</button>
-                <button class="form-btn secondary" onclick="goBack()">取消</button>
-            </div>
-        </div>
-    `;
-    
-    // 文件选择事件
-    document.getElementById('battery-icon-file-input').addEventListener('change', function(e) {
-        const fileName = document.getElementById('battery-file-name');
-        if (this.files.length > 0) {
-            fileName.textContent = this.files[0].name;
-        } else {
-            fileName.textContent = '';
-        }
-    });
-    
-    // 实时预览
-    const positionSelect = document.getElementById('battery-number-position');
-    const colorInput = document.getElementById('battery-number-color-input');
-    
-    function updatePreview() {
-        const previewIcon = document.querySelector('.preview-battery-icon');
-        const previewPercent = document.querySelector('.battery-percent-preview');
-        const previewFill = document.querySelector('.battery-fill-preview');
-        
-        // 更新位置
-        previewIcon.className = 'preview-battery-icon';
-        previewIcon.classList.add(`number-${positionSelect.value}`);
-        
-        // 更新颜色
-        previewPercent.style.color = colorInput.value;
-    }
-    
-    positionSelect.addEventListener('change', updatePreview);
-    colorInput.addEventListener('input', updatePreview);
-    
-    // 初始化预览
-    updatePreview();
-    
-    // 保存设置
-    document.getElementById('save-battery-icon-btn').onclick = function() {
-        b.numberPosition = positionSelect.value;
-        b.numberColor = colorInput.value;
-        
-        const url = document.getElementById('battery-icon-url-input').value.trim();
-        const file = document.getElementById('battery-icon-file-input').files[0];
-        
-        if (file) {
-            handleImageUpload(file, dataUrl => {
-                b.customIconUrl = dataUrl;
-                saveBatteryIconSettings();
-            });
-        } else {
-            b.customIconUrl = url;
-            saveBatteryIconSettings();
-        }
-    };
+// 模拟获取设备电量（实际应用中应替换为真实API）
+function getDeviceBatteryLevel() {
+    // 这里模拟电量在50%-100%之间随机变化
+    return Math.floor(Math.random() * 50) + 50;
 }
 
-// 保存电池图标设置
-function saveBatteryIconSettings() {
-    saveData(true, function() {
-        applyBatteryIconSettings();
-        showToast('电池图标设置已应用');
-    });
-}
-
-// 重置电池图标设置
-function resetBatteryIconSettings() {
-    if (confirm('确定要恢复默认电池图标设置吗？')) {
-        appData.settings.beautify.batteryIcon = {
-            numberPosition: 'inside',
-            numberColor: '#ffffff',
-            customIconUrl: '',
-            batteryLevel: 100
-        };
-        saveBatteryIconSettings();
-    }
-}
-
-// 处理图片上传
-function handleImageUpload(file, callback) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        callback(e.target.result);
-    };
-    reader.readAsDataURL(file);
-}
-
-// 显示提示信息
-function showToast(message) {
-    // 简单的toast实现
-    const toast = document.createElement('div');
-    toast.className = 'toast-message';
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0,0,0,0.8);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
-        z-index: 1000;
-    `;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        document.body.removeChild(toast);
-    }, 2000);
+// 模拟充电状态（实际应用中应替换为真实API）
+function isDeviceCharging() {
+    return false; // 模拟未充电状态
 }
 
 
