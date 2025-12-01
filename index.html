@@ -2123,6 +2123,9 @@
                     <div class="list-item" onclick="showPage('font-color-settings-page', renderFontColorSettingsPage)">
                         <div class="details"><span class="name">调整字体颜色</span></div><i class="fas fa-chevron-right chevron"></i>
                     </div>
+                    <div class="list-item" onclick="showPage('battery-settings-page', renderBatterySettingsPage)">
+                        <div class="details"><span class="name">更换电池图标</span></div><i class="fas fa-chevron-right chevron"></i>
+                    </div>
                     <div class="list-item" onclick="showPage('avatar-shape-settings-page', renderAvatarShapeSettingsPage)">
                         <div class="details"><span class="name">头像形状</span></div><i class="fas fa-chevron-right chevron"></i>
                     </div>
@@ -4900,16 +4903,15 @@
         }
 
         // --- New Feature Functions ---
-
         // 全局自定义主题
         function renderGlobalThemeEditorPage(container) {
             let currentSlot = appData.settings.beautify.activeGlobalThemeSlot > -1 ? appData.settings.beautify.activeGlobalThemeSlot : 0;
 
             const loadSlot = (slotIndex) => {
                 currentSlot = slotIndex;
-                const archive = appData.settings.beautify.globalThemeArchives[slotIndex] || {};
-                document.getElementById('global-theme-css-input').value = archive.css || '';
-                document.querySelectorAll('.slot-btn').forEach((btn, i) => {
+                const archive = appData.settings.beautify.globalThemeArchives[slotIndex] || { css: '' };
+                document.getElementById('global-theme-css-input').value = archive.css;
+                document.querySelectorAll('#global-theme-slots .slot-btn').forEach((btn, i) => {
                     btn.style.fontWeight = i === slotIndex ? 'bold' : 'normal';
                     btn.style.borderColor = i === appData.settings.beautify.activeGlobalThemeSlot ? 'var(--wechat-green)' : 'var(--wechat-border-color)';
                 });
@@ -4923,41 +4925,48 @@
                 <div class="content-area form-page">
                     <div class="form-group">
                         <label>存档槽</label>
-                        <div style="display: flex; justify-content: space-between;">
-                            ${[0,1,2].map(i => `<button class="modal-btn slot-btn" onclick="loadSlot(${i})">存档 ${i+1}</button>`).join('')}
+                        <div id="global-theme-slots" style="display: flex; justify-content: space-between;">
+                            ${[0,1,2].map(i => `<button class="modal-btn slot-btn" onclick="this.loadSlotHandler(${i})">存档 ${i+1}</button>`).join('')}
                         </div>
                     </div>
                     <div class="form-group">
                         <label>全局美化 CSS</label>
                         <textarea id="global-theme-css-input" style="height: 40vh; font-family: monospace;"></textarea>
                     </div>
-                    <button class="form-btn" onclick="saveGlobalTheme(${currentSlot})">保存到当前槽</button>
-                    <button class="form-btn" style="background-color: var(--wechat-blue);" onclick="applyGlobalTheme(${currentSlot})">应用当前槽主题</button>
-                    <button class="form-btn" style="background-color: #aaa;" onclick="clearGlobalTheme()">清除全局主题</button>
+                    <button id="save-global-theme-btn" class="form-btn">保存到当前槽</button>
+                    <button id="apply-global-theme-btn" class="form-btn" style="background-color: var(--wechat-blue);">应用当前槽主题</button>
+                    <button id="clear-global-theme-btn" class="form-btn" style="background-color: #aaa;">清除全局主题</button>
                 </div>
             `;
-            window.loadSlot = loadSlot;
+            
+            document.querySelectorAll('#global-theme-slots .slot-btn').forEach((btn, i) => {
+                btn.loadSlotHandler = loadSlot;
+            });
+            
+            document.getElementById('save-global-theme-btn').onclick = () => {
+                const css = document.getElementById('global-theme-css-input').value;
+                if (!appData.settings.beautify.globalThemeArchives[currentSlot]) {
+                    appData.settings.beautify.globalThemeArchives[currentSlot] = {};
+                }
+                appData.settings.beautify.globalThemeArchives[currentSlot].css = css;
+                saveData(true);
+            };
+
+            document.getElementById('apply-global-theme-btn').onclick = () => {
+                appData.settings.beautify.activeGlobalThemeSlot = currentSlot;
+                saveData(true);
+                applyBeautifySettings();
+                loadSlot(currentSlot); // Re-render buttons to show active state
+            };
+
+            document.getElementById('clear-global-theme-btn').onclick = () => {
+                appData.settings.beautify.activeGlobalThemeSlot = -1;
+                saveData(true);
+                applyBeautifySettings();
+                loadSlot(currentSlot); // Re-render buttons
+            };
+
             loadSlot(currentSlot);
-        }
-
-        function saveGlobalTheme(slotIndex) {
-            const css = document.getElementById('global-theme-css-input').value;
-            appData.settings.beautify.globalThemeArchives[slotIndex] = { css };
-            saveData(true);
-        }
-
-        function applyGlobalTheme(slotIndex) {
-            appData.settings.beautify.activeGlobalThemeSlot = slotIndex;
-            saveData(true);
-            applyBeautifySettings();
-            renderGlobalThemeEditorPage(document.getElementById('global-theme-editor-page'));
-        }
-
-        function clearGlobalTheme() {
-            appData.settings.beautify.activeGlobalThemeSlot = -1;
-            saveData(true);
-            applyBeautifySettings();
-            renderGlobalThemeEditorPage(document.getElementById('global-theme-editor-page'));
         }
 
         // 银行卡
