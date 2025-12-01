@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>LPhone-「测试版」</title>
+    <title>LPhone测试中</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style id="global-theme-style"></style> <!-- 全局自定义主题注入点 -->
     <style>
@@ -1452,7 +1452,7 @@
             // 多选功能
             const multiSelectToolbar = document.getElementById('multi-select-toolbar');
             const forwardBtn = document.getElementById('multi-select-forward-btn');
-            const deleteBtn = document.getElementById('multi-select-delete-btn');
+            const deleteBtn = document.getElementById'multi-select-delete-btn');
             const cancelBtn = document.getElementById('multi-select-cancel-btn');
             let multiSelectState = { active: false, selectedIds: new Set() };
 
@@ -4182,7 +4182,7 @@
                 a.download = `LPhone_部分备份_${new Date().toISOString().slice(0,10)}.json`;
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
+                document.removeChild(a);
                 URL.revokeObjectURL(url);
             } catch (e) {
                 showToast(`导出部分数据失败: ${e.message}`, 'error');
@@ -4199,8 +4199,17 @@
                 try {
                     const importedData = JSON.parse(e.target.result);
                     if (importedData.appData && (importedData.appData.user || importedData.appData.contacts)) { // Check for full or partial backup
-                        await dataManager.importFromBackup(importedData);
-                        showToast('数据恢复成功！应用将重新加载。');
+                        // For partial backup, merge data instead of full overwrite
+                        if (!importedData.appData.version) { 
+                            Object.keys(importedData.appData).forEach(key => {
+                                appData[key] = importedData.appData[key];
+                            });
+                            await saveData();
+                            showToast('部分数据恢复成功！应用将重新加载。');
+                        } else { // Full backup
+                            await dataManager.importFromBackup(importedData);
+                            showToast('数据恢复成功！应用将重新加载。');
+                        }
                         setTimeout(() => location.reload(), 1500);
                     } else {
                         showToast('文件格式不正确或数据结构不完整，恢复失败。', 'error');
@@ -6363,3 +6372,4 @@
     </script>
 </body>
 </html>
+```
