@@ -135,50 +135,40 @@
         .screen { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; background-color: var(--wechat-bg); border-radius: 34px; overflow: hidden; }
         .phone-container.fullscreen .screen { border-radius: 0; }
         
-        /* --- iPhone 6 风格外壳 --- */
-        .phone-container.iphone6-style {
-            width: 375px; height: 667px;
-            background: var(--phone-border-color);
+        /* --- iPhone6 模式 --- */
+        body.iphone6-mode .phone-container {
+            padding: 80px 15px; /* 创建上下 "chin" */
             border-radius: 40px;
-            padding: 20px 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border: none;
-        }
-        .phone-container.iphone6-style .screen {
-            border-radius: 5px;
-            height: calc(100% - 60px);
-        }
-        .phone-container.iphone6-style .status-bar {
-            height: 20px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            position: relative;
-            padding-top: 0;
-        }
-        .phone-container.iphone6-style .status-bar .time {
-            position: absolute; left: 50%; transform: translateX(-50%);
-        }
-        .phone-container.iphone6-style .page {
-            padding-top: 20px;
-        }
-        .phone-container.iphone6-style .iphone6-bottom {
-            height: 60px;
             background: var(--phone-border-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
             position: relative;
         }
-        .phone-container.iphone6-style .home-button {
-            width: 50px; height: 50px; border-radius: 50%;
-            background: #333; border: 2px solid #666;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer; transition: background 0.3s;
+        body.iphone6-mode .screen {
+            border-radius: 5px;
+            height: 100%;
+            width: 100%;
         }
-        .phone-container.iphone6-style .home-button:hover { background: #444; }
-        .phone-container.iphone6-style .home-button::after {
-            content: ''; width: 20px; height: 20px;
-            border: 2px solid #ccc; border-radius: 5px;
+        body.iphone6-mode .phone-container::before { /* 听筒 */
+            content: '';
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+        }
+        body.iphone6-mode .phone-container::after { /* Home键 */
+            content: '';
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #666;
+            background: #333;
         }
 
         /* --- 状态栏 & 通知栏 --- */
@@ -765,10 +755,6 @@
             <!-- 最小化通话窗口容器 -->
             <div id="minimized-call-container"></div>
         </div>
-        <!-- iPhone 6 风格底部 -->
-        <div class="iphone6-bottom" style="display: none;">
-            <div class="home-button"></div>
-        </div>
     </div>
 
     <!-- 提示音播放器 -->
@@ -896,18 +882,7 @@
                 }
             },
             contacts: [], groups: [], moments: [],
-            stickers: { 
-                packs: [
-                    {
-                        name: "内置表情",
-                        stickers: [
-                            { url: "https://img.js.design/assets/img/664e0d45692271d43c087968.jpg" },
-                            { url: "https://img.js.design/assets/img/664e0d44b63b2e883f053535.jpg" },
-                            { url: "https://img.js.design/assets/img/664e0d45511e1a53b37e0347.jpg" }
-                        ]
-                    }
-                ] 
-            },
+            stickers: { packs: [] },
             worldbooks: { presets: [], styles: [], library: [], forum: [] },
             forum: {
                 posts: [],
@@ -963,7 +938,7 @@
                     ringtone: ''
                 },
                 dnd: false,
-                displayMode: 'default' // 'default', 'fullscreen', 'iphone6'
+                displayMode: 'default' // 'default', 'fullscreen', or 'iphone6'
             },
             music: {
                 library: [], favorites: [], currentSongId: null, isPlaying: false,
@@ -1029,7 +1004,7 @@
                     if (!appData.music.playerBackground) appData.music.playerBackground = defaultAppData.music.playerBackground;
                     if (!appData.settings.beautify.redPacketBubbleCss) appData.settings.beautify.redPacketBubbleCss = '';
                     if (!appData.settings.beautify.transferBubbleCss) appData.settings.beautify.transferBubbleCss = '';
-                    if (appData.settings.displayMode === undefined) appData.settings.displayMode = 'default';
+                    if(appData.settings.displayMode === undefined) appData.settings.displayMode = 'default';
                     
                     appData.contacts.forEach(c => {
                         if (c.isPinned === undefined) c.isPinned = false;
@@ -1082,9 +1057,9 @@
                 return;
             }
 
-            // 【优化】锁屏逻辑：如果启用了锁屏，并且当前在主屏幕，则任何导航都应先导向锁屏
-            if (appData.settings.beautify.lockScreen.enabled && pageHistory[pageHistory.length - 1] === 'home-screen-page' && pageId !== 'home-screen-page') {
-                showPage('lock-screen-page', renderLockScreenPage, pageId, renderFunc, ...args);
+            if (pageId !== 'lock-screen-page' && pageId !== 'password-entry-page' && appData.settings.beautify.lockScreen.enabled && (pageHistory[pageHistory.length - 1] === 'home-screen-page' || pageHistory.length === 0 || pageHistory[pageHistory.length - 1] === 'lock-screen-page')) {
+                pageHistory = ['lock-screen-page'];
+                showPage('lock-screen-page', renderLockScreenPage);
                 return;
             }
 
@@ -1223,7 +1198,7 @@
             const visibleContacts = appData.contacts.filter(c => !appData.settings.blacklist.includes(c.id));
             const allChats = [...visibleContacts.map(c => ({...c, type: 'individual'})), ...appData.groups.map(g => ({...g, type: 'group'}))];
             
-            // 【优化】强化的列表排序逻辑，确保UI一致性
+            // HTML美化大师: 稳定的列表排序逻辑，确保UI一致性
             const sortedChats = [...allChats].sort((a, b) => {
                 if (a.isPinned && !b.isPinned) return -1;
                 if (!a.isPinned && b.isPinned) return 1;
@@ -1634,7 +1609,6 @@
                 </div>
             `;
             
-            // 【优化】进入聊天室时，渲染最新的聊天记录
             renderMessages(chatId, chatType, 'wechat');
 
             const input = document.getElementById('chat-input');
@@ -1696,7 +1670,7 @@
                         row.classList.add('selected');
                     } else {
                         row.classList.remove('selected');
-                                        }
+                    }
                 });
                 forwardBtn.disabled = multiSelectState.selectedIds.size === 0;
                 deleteBtn.disabled = multiSelectState.selectedIds.size === 0;
@@ -1731,7 +1705,6 @@
                 }
             };
 
-            // 【优化】修复多选时无法选中char消息的bug
             document.getElementById('message-area').addEventListener('click', e => {
                 if (!multiSelectState.active) return;
                 const messageRow = e.target.closest('.message-row');
@@ -1760,10 +1733,9 @@
 
             const conversation = chat.conversation || [];
             
-            // 【优化】移除回顶和回底按钮
             let html = '';
             let lastTimestamp = 0;
-            (conversation || []).forEach((msg, index) => {
+            conversation.forEach((msg, index) => {
                 if (!msg || !msg.type || !msg.content) {
                     console.warn("Message Firewall: Skipped rendering malformed message object:", msg);
                     return;
@@ -1813,7 +1785,7 @@
                     case 'avatar-under': timestampHtml = `<div class="message-timestamp-under" style="text-align: center;">${timeString}</div>`; break;
                 }
                 
-                bubbleHtml = isSent ? generateUserBubbleHtml(msg, chatId, chatType, source) : generateCharBubbleHtml(msg, chatId, chatType, source);
+                bubbleHtml = isSent ? generateUserBubbleHtml(msg, chatId, chatType, 'wechat') : generateCharBubbleHtml(msg, chatId, chatType, 'wechat');
 
                 if (msg.translatedText) additionalContent += `<div class="translated-text-bubble">${msg.translatedText}</div>`;
                 if (msg.type === 'voice' && msg.transcribedText) additionalContent += `<div class="voice-transcribed-bubble" onclick="this.style.display='none'">${msg.transcribedText}</div>`;
@@ -2612,18 +2584,18 @@
                 </div>
                 <div class="content-area">
                     <div class="list-divider"></div>
-                    ${['white', 'black', 'evol', 'simple-white', 'pink', 'aqua-blue', 'semi-transparent', 'transparent', 'stereo'].map(frame => `
+                    ${['white', 'black', 'simple-white', 'pink', 'aqua-blue', 'semi-transparent', 'transparent', 'stereo', 'evol'].map(frame => `
                     <div class="list-item" onclick="setPhoneFrame('${frame}')">
                         <div class="details"><span class="name">${{
                             white:'白色', 
                             black:'黑色', 
-                            evol: 'Evol',
                             'simple-white':'简约白', 
                             pink:'樱花粉', 
                             'aqua-blue':'水蓝色', 
                             'semi-transparent':'半透明', 
                             transparent:'透明', 
-                            stereo:'增强立体'
+                            stereo:'增强立体',
+                            evol: 'Evol'
                         }[frame]}</span></div>
                         ${appData.settings.beautify.phoneFrame === frame ? '<i class="fas fa-check" style="color: var(--wechat-green);"></i>' : ''}
                     </div>`).join('')}
@@ -3450,7 +3422,6 @@
 
             const transferMatch = replyText.match(/\[transfer:\s*amount=([\d.]+),\s*remark=(.*?)\]/i);
             const redPacketMatch = replyText.match(/\[redPacket:\s*amount=([\d.]+),\s*remark=(.*?)\]/i);
-            // 【优化】角色表情包智能化
             const stickerMatch = replyText.match(/\[sticker:(.+?)\]/i);
             const coupleInviteMatch = replyText.match(/\[couple_invitation\]/i);
             const voiceCallMatch = replyText.match(/\[voice_call\]/i);
@@ -3476,8 +3447,8 @@
                     const randomSticker = pack.stickers[Math.floor(Math.random() * pack.stickers.length)];
                     message = { id: Date.now() + Math.random(), sender: senderId, type: 'sticker', content: { url: randomSticker.url }, timestamp: Date.now() };
                 } else {
-                    // Fallback if pack not found
-                    message = { id: Date.now() + Math.random(), sender: senderId, type: 'text', content: { content: `[发送表情失败: 未找到表情包'${packName}']` }, timestamp: Date.now() };
+                    // Fallback if sticker pack not found
+                    message = { id: Date.now() + Math.random(), sender: senderId, type: 'text', content: { content: `[找不到表情包: ${packName}]` }, timestamp: Date.now() };
                 }
             } else if (coupleInviteMatch) {
                 message = {
@@ -3589,8 +3560,6 @@
 
             const isOfflineMode = appData.settings.chatMode === 'offline';
             const worldbookPreset = appData.worldbooks.presets.map(p => p.content).join('\n');
-            const stickerPacksPrompt = `【可用表情包】\n${appData.stickers.packs.map(p => `- ${p.name}`).join('\n')}`;
-            
             const systemPrompt = customPrompt || `
 【你的角色设定】
 ${contact.persona}
@@ -3599,8 +3568,6 @@ ${userPersonaPrompt}
 
 【世界书】
 ${worldbookPreset}
-
-${stickerPacksPrompt}
 
 【核心指令】
 你现为「小手机」AI聊天核心，必须严格遵循以下指令框架：
@@ -3611,7 +3578,8 @@ ${stickerPacksPrompt}
    - 转账/红包必须用CSS组件呈现，示例：
    [transfer: amount=100, remark=给你的零花钱]
    [redPacket: amount=88, remark=恭喜发财]
-   - 发送表情包必须使用格式 [sticker:表情包名称]，例如 [sticker:内置表情]
+   - 表情包必须用特定格式呈现，示例：
+   [sticker:可爱猫猫] (AI会根据表情包名称随机发送该包内的表情)
 3. 语言净化：彻底摒弃油腻感、霸总腔、八股文，禁用"投石子/小兽/像是在陈述事实"等表述，追求自然鲜活的口语化表达
 
 二、双模式切换机制
@@ -3797,6 +3765,7 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
         
         function applyBeautifySettings() {
             const root = document.documentElement;
+            const body = document.body;
             const bubbleStyle = document.getElementById('user-bubble-style');
             const redPacketBubbleStyle = document.getElementById('user-redpacket-bubble-style');
             const transferBubbleStyle = document.getElementById('user-transfer-bubble-style');
@@ -3818,22 +3787,25 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
             root.style.setProperty('--app-icon-radius', `${beautify.appIconRadius}px`);
             root.style.setProperty('--lock-screen-wallpaper', `url(${beautify.lockScreen.wallpaper})`);
 
-            document.body.className = '';
+            body.className = '';
             if (beautify.theme) {
-                document.body.classList.add(`${beautify.theme}-mode`);
+                body.classList.add(`${beautify.theme}-mode`);
+            }
+            if (appData.settings.displayMode === 'iphone6') {
+                body.classList.add('iphone6-mode');
             }
             root.style.setProperty('--global-font-color', beautify.globalFontColor);
 
             const frameStyles = {
                 white: { color: '#E5E5E5', width: '10px', shadow: '0 10px 40px rgba(0,0,0,0.2)', highlight: 'transparent', backdrop: 'none' },
                 black: { color: '#111', width: '10px', shadow: '0 15px 50px rgba(0,0,0,0.3)', highlight: 'transparent', backdrop: 'none' },
-                evol: { color: '#fff', width: '10px', shadow: '0 15px 50px rgba(0,0,0,0.3)', highlight: '#111', backdrop: 'none' },
                 'simple-white': { color: '#FFF', width: '10px', shadow: '0 10px 40px rgba(0,0,0,0.2)', highlight: '#111', backdrop: 'none' },
                 pink: { color: '#FFC0CB', width: '10px', shadow: '0 10px 40px rgba(255,192,203,0.3)', highlight: 'transparent', backdrop: 'none' },
                 'aqua-blue': { color: '#00FFFF', width: '10px', shadow: '0 10px 40px rgba(0, 255, 255, 0.3)', highlight: 'transparent', backdrop: 'none' },
                 'semi-transparent': { color: 'rgba(255, 255, 255, 0.1)', width: '10px', shadow: '0 10px 40px rgba(0,0,0,0.2)', highlight: 'rgba(255, 255, 255, 0.2)', backdrop: 'blur(10px)' },
                 transparent: { color: 'transparent', width: '0px', shadow: 'none', highlight: 'transparent', backdrop: 'none' },
-                stereo: { color: '#111', width: '10px', shadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.05)', highlight: '#fff', backdrop: 'none' }
+                stereo: { color: '#111', width: '10px', shadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 0 15px rgba(255,255,255,0.05)', highlight: '#fff', backdrop: 'none' },
+                evol: { color: '#fff', width: '1px', shadow: '0 0 0 1px #FFD1DC, 0 0 0 2px #000', highlight: 'transparent', backdrop: 'none' }
             };
             const style = frameStyles[beautify.phoneFrame] || frameStyles.black;
             root.style.setProperty('--phone-border-color', style.color);
@@ -3898,17 +3870,12 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
                 root.style.setProperty('--battery-percent-display-inside', 'none');
             }
 
-            // 【优化】显示模式设置
+            // Display Mode Settings
             const phoneContainer = document.getElementById('phone-body');
-            const iphone6Bottom = document.querySelector('.iphone6-bottom');
-            phoneContainer.classList.remove('fullscreen', 'iphone6-style');
-            iphone6Bottom.style.display = 'none';
-
             if (appData.settings.displayMode === 'fullscreen') {
                 phoneContainer.classList.add('fullscreen');
-            } else if (appData.settings.displayMode === 'iphone6') {
-                phoneContainer.classList.add('iphone6-style');
-                iphone6Bottom.style.display = 'flex';
+            } else {
+                phoneContainer.classList.remove('fullscreen');
             }
         }
 
@@ -4059,7 +4026,6 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
             closeModal('forward-message-modal');
         }
         
-        // 【优化】聊天记录查看功能
         function showForwardedContentModal(event, messageId, chatId, chatType, source) {
             event.stopPropagation();
             const chat = chatType === 'group' ? appData.groups.find(g => g.id == chatId) : appData.contacts.find(c => c.id == chatId);
@@ -4071,7 +4037,13 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
             
             const messagesHtml = message.content.messages.map(msg => {
                 const isSent = msg.sender === appData.user.id;
-                const sender = isSent ? appData.user : (appData.contacts.find(c => c.id == msg.sender) || {name: '未知', nickname: '未知', avatar: 'https://img.js.design/assets/img/65a881fa383e6a42242a3f33.jpg'});
+                let sender;
+                if (isSent) {
+                    sender = appData.user;
+                } else {
+                    sender = appData.contacts.find(c => c.id == msg.sender) || appData.groups.find(g => g.id == msg.sender)?.members.find(m => m.id == msg.sender) || {name: '未知', nickname: '未知', avatar: 'https://img.js.design/assets/img/65a881fa383e6a42242a3f33.jpg'};
+                }
+                
                 const bubbleHtml = isSent ? generateUserBubbleHtml(msg, chatId, chatType, source) : generateCharBubbleHtml(msg, chatId, chatType, source);
                 return `
                     <div class="message-row ${isSent ? 'sent' : 'received'}">
@@ -4802,7 +4774,6 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
             }
         }
 
-        // 【优化】聊天记录查看功能
         function showForwardedContentModal(event, messageId, chatId, chatType, source) {
             event.stopPropagation();
             const chat = chatType === 'group' ? appData.groups.find(g => g.id == chatId) : appData.contacts.find(c => c.id == chatId);
@@ -4814,7 +4785,13 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
             
             const messagesHtml = message.content.messages.map(msg => {
                 const isSent = msg.sender === appData.user.id;
-                const sender = isSent ? appData.user : (appData.contacts.find(c => c.id == msg.sender) || {name: '未知', nickname: '未知', avatar: 'https://img.js.design/assets/img/65a881fa383e6a42242a3f33.jpg'});
+                let sender;
+                if (isSent) {
+                    sender = appData.user;
+                } else {
+                    sender = appData.contacts.find(c => c.id == msg.sender) || appData.groups.find(g => g.id == msg.sender)?.members.find(m => m.id == msg.sender) || {name: '未知', nickname: '未知', avatar: 'https://img.js.design/assets/img/65a881fa383e6a42242a3f33.jpg'};
+                }
+                
                 const bubbleHtml = isSent ? generateUserBubbleHtml(msg, chatId, chatType, source) : generateCharBubbleHtml(msg, chatId, chatType, source);
                 return `
                     <div class="message-row ${isSent ? 'sent' : 'received'}">
@@ -6624,6 +6601,8 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
         }
         
         // --- Initialization ---
+        let isPhoneUnlocked = false; // HTML美化大师: 新增解锁状态标志
+
         document.addEventListener('DOMContentLoaded', async () => {
             const activationModal = document.getElementById('activation-modal');
             const phoneBody = document.getElementById('phone-body');
@@ -6653,6 +6632,7 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
             await loadData();
             applyBeautifySettings();
             
+            isPhoneUnlocked = !appData.settings.beautify.lockScreen.enabled; // HTML美化大师: 初始化解锁状态
             pageHistory = [appData.settings.beautify.lockScreen.enabled ? 'lock-screen-page' : 'home-screen-page'];
             showPage(pageHistory[0], appData.settings.beautify.lockScreen.enabled ? renderLockScreenPage : renderHomeScreen);
 
@@ -6687,17 +6667,9 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
         }
 
         // --- Lock Screen Logic ---
-        // 【优化】锁屏逻辑
-        let unlockTarget = { pageId: 'home-screen-page', renderFunc: renderHomeScreen, args: [] };
-
-        function renderLockScreenPage(container, targetPageId, targetRenderFunc, ...targetArgs) {
+        function renderLockScreenPage(container) {
             if (!container) return;
-            if (targetPageId) {
-                unlockTarget = { pageId: targetPageId, renderFunc: targetRenderFunc, args: targetArgs };
-            } else {
-                unlockTarget = { pageId: 'home-screen-page', renderFunc: renderHomeScreen, args: [] };
-            }
-
+            isPhoneUnlocked = false; // HTML美化大师: 每次到锁屏页都重置状态
             updateSystemUI();
             const slideBar = container.querySelector('#slide-to-unlock-bar');
             const slideHandle = container.querySelector('#slide-handle');
@@ -6783,8 +6755,9 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
         }
 
         function unlockPhone() {
+            isPhoneUnlocked = true; // HTML美化大师: 核心修复，设置解锁标志
             pageHistory = ['home-screen-page'];
-            showPage(unlockTarget.pageId, unlockTarget.renderFunc, ...unlockTarget.args);
+            showPage('home-screen-page', renderHomeScreen);
         }
 
         function renderLockScreenSettingsPage(container) {
@@ -7081,7 +7054,7 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
                 - 潜台词与留白：让事件的发展靠读者从细节推测，例如某人回帖只发了一个句号，但前后几条回复的时间间隔异常短，暗示情绪波动。
                 - 轻小说式调味（可选风格）：如果社区文风偏轻小说，可在动态中植入吐槽役内心戏（“欸？这楼主是认真的吗？我差点把茶喷屏幕上…”），用语气词与标点营造鲜活感。
 
-                五、禁忌与净化
+                五、评论的禁忌
                 - 禁止使用过度煽情词（心碎/泪目/燃爆）以及八股口号。
                 - 禁止生硬堆砌热点标签，必须让标签与内容自然贴合。
                 - 禁止上帝视角解释他人动机，只能呈现可见的动作、语言、神态与环境变化。
@@ -7454,9 +7427,9 @@ ${isOfflineMode ? '当前为线下剧情模式，请生成一段2000-8000字的�
               ...
             ]`;
             try {
-                constreply = (await getAiReply(post.authorId, 'wechat', prompt))[0];
+                const reply = (await getAiReply(post.authorId, 'wechat', prompt))[0];
                 const jsonString = reply.substring(reply.indexOf('['), reply.lastIndexOf(']') + 1);
-                const newCommentsData = JSON.parse(jsonString);
+                const newCommentsData = txt.parse(jsonString);
                 const newComments = newCommentsData.map(c => {
                     const author = appData.contacts.find(contact => contact.id == c.authorId) || appData.contacts[0];
                     return {
